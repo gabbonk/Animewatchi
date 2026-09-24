@@ -1,7 +1,4 @@
-// FULL FEATURED ANIME APP (AniAPI + Watchlist + Glass UI)
-
 import 'dart:convert';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,7 +8,10 @@ const base = "https://api.aniapi.com/v1";
 
 // ================= API =================
 Future<dynamic> api(String path) async {
-  final res = await http.get(Uri.parse("$base$path"));
+  final res = await http.get(
+    Uri.parse("$base$path"),
+    headers: {"Accept": "application/json"},
+  );
 
   if (res.statusCode != 200) {
     throw Exception("Error ${res.statusCode}");
@@ -22,7 +22,9 @@ Future<dynamic> api(String path) async {
 
 Map<String, dynamic> item(dynamic a) => {
       "id": a["id"],
-      "title": a["titles"]?["en"] ?? a["titles"]?["jp"] ?? "No Title",
+      "title": a["titles"]?["en"] ??
+          a["titles"]?["jp"] ??
+          "No Title",
       "img": a["cover_image"],
     };
 
@@ -37,7 +39,9 @@ Future<List<Map<String, dynamic>>> loadWatch() async {
 Future<void> saveWatch(List<Map<String, dynamic>> list) async {
   final p = await SharedPreferences.getInstance();
   await p.setStringList(
-      "watch", list.map((e) => jsonEncode(e)).toList());
+    "watch",
+    list.map((e) => jsonEncode(e)).toList(),
+  );
 }
 
 // ================= URL =================
@@ -50,10 +54,13 @@ Future<void> openUrl(String? url) async {
 }
 
 // ================= APP =================
-void main() => runApp(const MyApp());
+void main() {
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -68,6 +75,7 @@ class MyApp extends StatelessWidget {
 // ================= HOME =================
 class Home extends StatefulWidget {
   const Home({super.key});
+
   @override
   State<Home> createState() => _HomeState();
 }
@@ -84,7 +92,6 @@ class _HomeState extends State<Home> {
     ];
 
     return Scaffold(
-      backgroundColor: Colors.black,
       appBar: AppBar(title: const Text("Anime Hub")),
       body: pages[tab],
       bottomNavigationBar: NavigationBar(
@@ -100,24 +107,6 @@ class _HomeState extends State<Home> {
   }
 }
 
-// ================= GLASS CARD =================
-Widget glass({required Widget child}) {
-  return ClipRRect(
-    borderRadius: BorderRadius.circular(16),
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white24),
-        ),
-        child: child,
-      ),
-    ),
-  );
-}
-
 // ================= BROWSE =================
 class BrowseTab extends StatelessWidget {
   const BrowseTab({super.key});
@@ -127,10 +116,17 @@ class BrowseTab extends StatelessWidget {
     return FutureBuilder(
       future: api("/anime?per_page=12"),
       builder: (c, s) {
-        if (!s.hasData) return const Center(child: CircularProgressIndicator());
+        if (s.hasError) {
+          return Center(child: Text("Error: ${s.error}"));
+        }
 
-        final list =
-            (s.data["data"]["documents"] as List).map(item).toList();
+        if (!s.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final list = (s.data["data"]["documents"] as List? ?? [])
+            .map(item)
+            .toList();
 
         return Grid(list);
       },
@@ -141,6 +137,7 @@ class BrowseTab extends StatelessWidget {
 // ================= SEARCH =================
 class SearchTab extends StatefulWidget {
   const SearchTab({super.key});
+
   @override
   State<SearchTab> createState() => _SearchTabState();
 }
@@ -169,11 +166,14 @@ class _SearchTabState extends State<SearchTab> {
                   future: api("/anime?title=$q"),
                   builder: (c, s) {
                     if (!s.hasData) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(
+                          child: CircularProgressIndicator());
                     }
 
                     final list =
-                        (s.data["data"]["documents"] as List).map(item).toList();
+                        (s.data["data"]["documents"] as List? ?? [])
+                            .map(item)
+                            .toList();
 
                     return Grid(list);
                   },
@@ -231,11 +231,16 @@ class Grid extends StatelessWidget {
             c,
             MaterialPageRoute(builder: (_) => Detail(m)),
           ),
-          child: glass(
+          child: Card(
             child: Column(
               children: [
                 Expanded(
-                  child: Image.network(m["img"], fit: BoxFit.cover),
+                  child: Image.network(
+                    m["img"] ?? "",
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.broken_image),
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.all(8),
@@ -305,29 +310,13 @@ class _DetailState extends State<Detail> {
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          Image.network(a["img"]),
+          Image.network(a["img"] ?? ""),
           const SizedBox(height: 10),
 
-          // 🔥 Episode Selector (basic)
-          const Text("Episodes (sample)"),
-          Wrap(
-            spacing: 8,
-            children: List.generate(
-              12,
-              (i) => OutlinedButton(
-                onPressed: () {
-                  openUrl("https://www.google.com/search?q=${a["title"]}+episode+${i + 1}");
-                },
-                child: Text("${i + 1}"),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
           ElevatedButton(
-            onPressed: () => openUrl("https://anilist.co/anime/${a["id"]}"),
-            child: const Text("Open More Info"),
+            onPressed: () => openUrl(
+                "https://www.google.com/search?q=${a["title"]}+anime"),
+            child: const Text("Find Episodes"),
           ),
         ],
       ),
