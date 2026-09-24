@@ -14,7 +14,13 @@ Future<dynamic> api(String path) async {
   final wait = 400 - DateTime.now().difference(_last).inMilliseconds;
   _last = DateTime.now().add(Duration(milliseconds: wait > 0 ? wait : 0));
   if (wait > 0) await Future.delayed(Duration(milliseconds: wait));
-  final r = await http.get(Uri.parse('$base$path'));
+  final r = await http.get(
+  Uri.parse('$base$path'),
+  headers: {
+    "Accept": "application/json",
+    "User-Agent": "AnimeHubApp/1.0",
+  },
+);
   if (r.statusCode != 200) throw Exception('HTTP ${r.statusCode}');
   return _cache[path] = jsonDecode(r.body);
 }
