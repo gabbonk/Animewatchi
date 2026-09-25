@@ -1,7 +1,7 @@
 name: anime_hub
 description: Anime browser powered by the Jikan API
 publish_to: none
-version: alpha.1.0
+version: 1.0.1
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
